@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AZUMI</title>
+<style>
+/* ============================================================
+   SECTION: TOKENS
+   ============================================================ */
+:root {
+  --az-red:    #e74c3c;  /* Media, Gallery, Library */
+  --az-orange: #e67e22;  /* Connections, Board, Members */
+  --az-yellow: #f1c40f;  /* Venues, Playground */
+  --az-green:  #2ecc71;  /* Events, Contests */
+  --az-blue:   #3498db;  /* Tribes, Feed, Posts */
+  --az-purple: #9b59b6;  /* Azumi Picks (editorial) */
+
+  --az-ink:  #2c3e50;
+  --az-grey: #95a5a6;
+  --az-line: #ececec;
+  --az-card: #ffffff;
+  --az-veil: rgba(255,255,255,0.92);
+
+  --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --track-wide: 3px;
+  --radius: 0;
+
+  --topbar-h: 56px;
+  --sidenav-w: 180px;
+  --rightrail-w: 240px;
+}
+
+/* ============================================================
+   SECTION: RESET
+   ============================================================ */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  font-family: var(--font);
+  color: var(--az-ink);
+  background: #fafafa;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; cursor: pointer; }
+button { font-family: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+input { font-family: inherit; }
+ul { list-style: none; margin: 0; padding: 0; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--az-line); }
+
+.label {
+  text-transform: uppercase;
+  letter-spacing: var(--track-wide);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+/* ============================================================
+   SECTION: APP SHELL LAYOUT
+   ============================================================ */
+#app {
+  display: grid;
+  grid-template-rows: var(--topbar-h) 1fr;
+  height: 100vh;
+  min-width: 1024px;
+  overflow: hidden;
+}
+#shell-body {
+  display: grid;
+  grid-template-columns: var(--sidenav-w) 1fr var(--rightrail-w);
+  min-height: 0;
+}
+#shell-body.rail-collapsed { grid-template-columns: var(--sidenav-w) 1fr 0px; }
+#shell-body.rail-collapsed #rightrail { display: none; }
+
+#content {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+/* ============================================================
+   SECTION: TOPBAR
+   ============================================================ */
+#topbar {
+  display: grid;
+  grid-template-columns: var(--sidenav-w) 1fr var(--rightrail-w);
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid var(--az-line);
+  z-index: 50;
+  position: relative;
+}
+.tb-brand { display: flex; align-items: center; gap: 10px; padding-left: 16px; }
+.tb-brand svg { width: 26px; height: 26px; flex-shrink: 0; }
+.tb-nav-mini { display: flex; flex-direction: column; font-size: 9px; letter-spacing: 2px; line-height: 1.5; }
+.tb-nav-mini a { color: var(--az-grey); font-weight: 300; }
+.tb-nav-mini a.active { color: var(--az-ink); font-weight: 400; }
+.tb-word { font-size: 15px; font-weight: 200; letter-spacing: 4px; color: var(--az-ink); }
+
+.tb-center {
+  display: flex; align-items: center; justify-content: center; gap: 18px;
+}
+.tb-icon-btn { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--az-grey); }
+.tb-icon-btn:hover { color: var(--az-ink); }
+.tb-user { display: flex; align-items: center; gap: 10px; }
+.tb-user-info { line-height: 1.3; text-align: left; }
+.tb-user-info .name { font-size: 13px; font-weight: 400; }
+.tb-user-info .flair { font-size: 11px; color: var(--az-grey); }
+.avatar {
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 300; flex-shrink: 0; overflow: hidden;
+}
+
+.tb-player { display: flex; align-items: center; gap: 12px; padding-right: 18px; justify-content: flex-end; }
+.tb-transport { display: flex; gap: 8px; align-items: center; }
+.tb-transport button { font-size: 14px; color: var(--az-ink); padding: 4px; }
+.tb-progress-wrap { width: 90px; }
+.tb-progress-track { height: 2px; background: var(--az-line); position: relative; overflow: hidden; }
+.tb-progress-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--az-ink); }
+.tb-progress-fill.playing { animation: progress-run 12s linear infinite; }
+@keyframes progress-run { from { width: 0%; } to { width: 100%; } }
+.tb-nowplaying { font-size: 11px; color: var(--az-grey); max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-queue-toggle { font-size: 14px; color: var(--az-grey); }
+.tb-queue-toggle:hover { color: var(--az-ink); }
+
+/* ============================================================
+   SECTION: SIDENAV
+   ============================================================ */
+#sidenav {
+  padding: 20px 16px;
+  overflow-y: auto;
+  background: #fff;
+}
+#sidenav.on-backdrop { background: transparent; }
+.sn-profile-card { margin-bottom: 18px; }
+.sn-profile-card .pname { font-size: 15px; font-weight: 400; }
+.sn-profile-card .pflair { font-size: 11px; color: var(--az-grey); margin-bottom: 8px; }
+.sn-stats { font-size: 10px; letter-spacing: 1px; color: var(--az-grey); line-height: 1.6; margin-bottom: 6px; }
+.sn-stats b { color: var(--az-ink); float: right; font-weight: 400; }
+.sn-dots { display: flex; gap: 5px; margin-bottom: 10px; }
+.sn-dots span { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+.sn-sub, .sn-site { margin-bottom: 18px; }
+.sn-sub li a, .sn-site li a {
+  display: block; padding: 5px 2px; font-size: 12px; letter-spacing: 1px;
+  text-transform: uppercase; font-weight: 300;
+}
+.sn-site li a {
+  border: 1px solid var(--az-line);
+  border-bottom-width: 2px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+.sn-site li a.disabled { color: #ccc; cursor: default; pointer-events: none; }
+.sn-sub li a.active { font-weight: 400; text-decoration: underline; }
+
+/* ============================================================
+   SECTION: RIGHTRAIL
+   ============================================================ */
+#rightrail { overflow-y: auto; background: #fff; border-left: 1px solid var(--az-line); }
+.rr-module-header {
+  color: #fff; font-size: 11px; letter-spacing: 2px; padding: 7px 14px;
+  text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;
+}
+.rr-feed-list, .rr-chat-list { padding: 10px 14px; }
+.rr-feed-item { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--az-line); font-size: 12px; }
+.rr-feed-item .thumb { width: 30px; height: 30px; flex-shrink: 0; }
+.rr-chat-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; }
+.rr-chat-item .dot { width: 7px; height: 7px; border-radius: 50%; margin-left: auto; }
+.rr-chat-item .dot.online { background: var(--az-green); }
+.rr-chat-item .dot.offline { background: var(--az-line); }
+
+.rr-thread { border-top: 3px solid var(--az-orange); }
+.rr-thread-body { padding: 10px 14px; max-height: 220px; overflow-y: auto; }
+.rr-bubble { max-width: 85%; padding: 6px 9px; margin-bottom: 6px; font-size: 11.5px; line-height: 1.35; }
+.rr-bubble.them { background: #f3f3f3; margin-right: auto; }
+.rr-bubble.me { background: rgba(52,152,219,0.15); margin-left: auto; text-align: right; }
+.rr-thread-input { display: flex; border-top: 1px solid var(--az-line); padding: 8px 14px; }
+.rr-thread-input input { flex: 1; border: none; font-size: 11px; outline: none; }
+
+.rr-queue { padding: 10px 14px; }
+.rr-queue-item { display: flex; gap: 8px; align-items: center; padding: 5px 0; font-size: 11.5px; }
+.rr-queue-item .qthumb { width: 26px; height: 26px; flex-shrink: 0; }
+.rr-queue-item.now-playing { font-weight: 500; }
+.rr-queue-item .qtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ============================================================
+   SECTION: EXPLORE / MASONRY
+   ============================================================ */
+.view-pad { padding: 28px 32px; }
+.view-title { font-weight: 200; font-size: 22px; letter-spacing: 2px; text-transform: uppercase; margin: 0 0 20px; color: var(--az-ink); }
+
+.masonry {
+  columns: 3 220px;
+  column-gap: 16px;
+}
+.tile {
+  break-inside: avoid;
+  margin-bottom: 16px;
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--az-line);
+}
+.tile.ratio-21 { aspect-ratio: 2 / 1; }
+.tile-art { position: absolute; inset: 0; }
+.tile-veil {
+  position: absolute; inset: 0;
+  background: var(--az-veil);
+  display: flex; align-items: flex-end;
+  padding: 12px;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.tile:hover .tile-veil { opacity: 1; }
+.tile-title-wrap { width: 100%; }
+.tile-title {
+  font-size: 13px; font-weight: 400; color: var(--az-ink);
+  transform: translateY(6px); opacity: 0; transition: all 200ms ease;
+}
+.tile:hover .tile-title { transform: translateY(0); opacity: 1; }
+.tile-underline { width: 28px; height: 2px; margin-top: 6px; transition: width 200ms ease 60ms; width: 0; }
+.tile:hover .tile-underline { width: 28px; }
+.tile-pick-ribbon {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--az-purple); color: #fff;
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+  padding: 4px 8px; text-align: center; z-index: 2;
+}
+
+/* ============================================================
+   SECTION: OVERLAY DETAIL CARDS
+   ============================================================ */
+#overlay {
+  position: fixed; inset: 0; background: rgba(255,255,255,0.85);
+  display: none; align-items: flex-start; justify-content: center;
+  z-index: 200; overflow-y: auto; padding: 60px 20px;
+}
+#overlay.open { display: flex; }
+.dcard {
+  background: var(--az-card); max-width: 640px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  border-top: 3px solid var(--az-ink);
+  position: relative; padding: 0 0 28px;
+}
+.dcard-close {
+  position: absolute; top: 10px; right: 14px; font-size: 18px; color: var(--az-grey); z-index: 3;
+}
+.dcard-close:hover { color: var(--az-ink); }
+.dcard-nav {
+  position: fixed; top: 50%; transform: translateY(-50%);
+  font-size: 30px; color: var(--az-grey); padding: 10px; z-index: 201;
+}
+.dcard-nav:hover { color: var(--az-ink); }
+.dcard-nav.prev { left: 26px; }
+.dcard-nav.next { right: 26px; }
+
+.dcard-header { padding: 24px 32px 4px; font-size: 22px; font-weight: 200; letter-spacing: 1px; text-transform: uppercase; }
+.dcard-media { width: 100%; aspect-ratio: 16/10; position: relative; margin-top: 8px; }
+.dcard-media.portrait { aspect-ratio: 4/5; max-width: 320px; margin: 8px auto 0; }
+.dcard-play-circle {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+}
+.dcard-play-circle svg { width: 52px; height: 52px; opacity: 0.9; }
+.dcard-body { padding: 18px 32px 0; font-size: 13px; line-height: 1.6; color: #444; }
+.dcard-dots { display: flex; gap: 6px; justify-content: center; margin: 14px 0; }
+.dcard-dots span { width: 12px; height: 12px; border-radius: 50%; }
+.dcard-actions { display: flex; gap: 0; justify-content: center; margin-top: 18px; padding: 0 32px; }
+.dcard-actions button {
+  flex: 1; max-width: 160px; border: 1px solid var(--az-line); padding: 10px; font-size: 11px;
+  letter-spacing: 2px; text-transform: uppercase; background: #fff;
+}
+.dcard-actions button.on { background: var(--az-ink); color: #fff; }
+.dcard-actions button + button { border-left: none; }
+
+.dcard-fullwidth-btn {
+  display: block; width: calc(100% - 64px); margin: 10px auto 0; padding: 12px;
+  font-size: 12px; letter-spacing: 2px; text-transform: uppercase; text-align: center;
+  border: 1px solid var(--az-line);
+}
+.dcard-fullwidth-btn.bookmark { color: var(--az-blue); border-color: var(--az-blue); }
+.dcard-fullwidth-btn.bookmark.on { background: var(--az-blue); color: #fff; }
+.dcard-fullwidth-btn.tickets { color: var(--az-green); border-color: var(--az-green); }
+
+.dcard-event-top { display: flex; align-items: center; gap: 16px; padding: 24px 32px 0; }
+.dcard-votes { text-align: center; font-size: 10px; color: var(--az-grey); }
+.dcard-ab { display: flex; }
+.dcard-ab div { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 400; color: #fff; }
+.dcard-datebadge { border: 1px solid var(--az-line); text-align: center; padding: 6px 10px; margin-left: auto; }
+.dcard-datebadge .day { font-size: 20px; font-weight: 300; }
+.dcard-datebadge .mon { font-size: 10px; letter-spacing: 1px; color: var(--az-grey); }
+.dcard-event-meta { padding: 14px 32px 0; }
+.dcard-event-meta h3 { font-weight: 300; font-size: 18px; margin: 0 0 6px; }
+.dcard-event-meta .venue { font-size: 12px; }
+.dcard-attendees { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 32px; margin-top: 14px; }
+.dcard-attendees .att { width: 34px; height: 34px; border-radius: 50%; }
+
+.dcard-comments { padding: 16px 32px 0; border-top: 1px solid var(--az-line); margin-top: 20px; }
+.dcard-comment { display: flex; gap: 10px; padding: 10px 0; font-size: 12.5px; }
+.dcard-comment .cavatar { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; }
+.dcard-comment .cname { font-weight: 500; margin-right: 6px; }
+.dcard-comment-input { display: flex; gap: 10px; align-items: center; padding: 10px 0; }
+.dcard-comment-input input { flex: 1; border: none; border-bottom: 1px solid var(--az-line); padding: 6px 2px; font-size: 12px; outline: none; }
+
+.playground-cta { display: inline-block; margin: 16px 32px 0; padding: 10px 22px; border: 1px solid #ccc; color: #ccc; letter-spacing: 2px; font-size: 11px; text-transform: uppercase; cursor: default; }
+
+/* ============================================================
+   SECTION: TRIBE (immersive backdrop view)
+   ============================================================ */
+.backdrop {
+  position: absolute; inset: 0; overflow: hidden;
+}
+.backdrop-art {
+  position: absolute; inset: -10%;
+  animation: backdrop-shift 18s ease-in-out infinite alternate;
+  filter: saturate(0.75) brightness(0.97);
+}
+@keyframes backdrop-shift {
+  from { transform: scale(1) translate(0,0); }
+  to { transform: scale(1.08) translate(-2%, 1%); }
+}
+.backdrop-legend { position: absolute; top: 0; left: 0; display: flex; flex-direction: column; z-index: 2; }
+.backdrop-legend span { width: 5px; height: 22px; }
+
+.tribe-wrap { position: relative; min-height: 100%; display: flex; flex-direction: column; align-items: center; padding-top: 46px; z-index: 3; }
+.tribe-emblem {
+  width: 90px; height: 90px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.9);
+  display: flex; align-items: center; justify-content: center; color: #fff; font-size: 26px; font-weight: 300;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+.tribe-actions { display: flex; gap: 4px; margin: 14px 0; }
+.tribe-actions button {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; opacity: 0.75;
+}
+.tribe-actions button.active { opacity: 1; box-shadow: 0 0 0 2px #fff; }
+
+.tribe-menu { width: 220px; background: var(--az-veil); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+.tribe-menu-header { padding: 8px 0; text-align: center; color: #fff; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+.tribe-menu li a {
+  display: block; padding: 8px 20px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+  font-weight: 300; text-align: center;
+}
+.tribe-menu li a.active { font-weight: 500; text-decoration: underline; }
+.tribe-menu-footer { text-align: center; padding: 8px 0; font-size: 10px; letter-spacing: 1px; color: var(--az-grey); background: rgba(255,255,255,0.7); }
+
+.tribe-panel {
+  background: var(--az-card); width: min(760px, 92%); margin-top: 22px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.18); border-top: 3px solid var(--az-ink); padding: 22px 28px 30px;
+}
+.tribe-panel h2 { font-weight: 200; font-size: 18px; letter-spacing: 2px; text-transform: uppercase; margin: 0 0 16px; }
+
+.mini-masonry { columns: 4 130px; column-gap: 10px; }
+.mini-tile { break-inside: avoid; margin-bottom: 10px; aspect-ratio: 1/1; }
+.mini-tile.greyscale { filter: grayscale(1) contrast(1.1); }
+.mini-tile.redtint { filter: sepia(1) saturate(4) hue-rotate(-40deg) brightness(0.95); }
+
+.announce-item { border: 1px solid var(--az-line); padding: 14px 16px; margin-bottom: 10px; position: relative; }
+.announce-item.premium::before {
+  content: "🔒 FOR PREMIUM SUBSCRIBERS ONLY"; display: block; font-size: 10px; letter-spacing: 1px;
+  color: var(--az-purple); margin-bottom: 6px; text-transform: uppercase;
+}
+
+.board-composer { display: flex; gap: 8px; margin-bottom: 16px; }
+.board-composer input { flex: 1; border: 1px solid var(--az-line); padding: 8px 10px; font-size: 12px; outline: none; }
+.board-composer button { border: 1px solid var(--az-ink); padding: 8px 16px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+.board-post { border-bottom: 1px solid var(--az-line); padding: 12px 0; }
+.board-post .bt { font-weight: 400; font-size: 14px; }
+.board-post .ba { font-size: 11px; color: var(--az-grey); }
+
+.calendar-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--az-line); }
+.calendar-row .cdate { width: 56px; text-align: center; font-size: 11px; color: var(--az-green); font-weight: 500; flex-shrink: 0; }
+.calendar-row .ctitle { flex: 1; font-size: 13px; }
+.calendar-row .go-btn { border: 1px solid var(--az-green); color: var(--az-green); font-size: 10px; letter-spacing: 1px; padding: 5px 12px; }
+.calendar-row .go-btn.on { background: var(--az-green); color: #fff; }
+
+.contest-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--az-line); font-size: 13px; }
+.contest-row .entries { color: var(--az-grey); font-size: 11px; }
+
+.member-search { width: 100%; border: 1px solid var(--az-line); padding: 8px 10px; margin-bottom: 12px; font-size: 12px; outline: none; }
+.member-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; border-bottom: 1px solid var(--az-line); }
+.member-row .mav { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
+.member-row .mflair { color: var(--az-grey); font-size: 11px; }
+
+/* ============================================================
+   SECTION: PROFILE
+   ============================================================ */
+.profile-header { display: flex; gap: 24px; align-items: flex-end; margin-bottom: 20px; }
+.profile-av { width: 90px; height: 90px; border-radius: 50%; flex-shrink: 0; }
+.profile-name { font-size: 22px; font-weight: 200; letter-spacing: 1px; }
+.profile-flair { font-size: 12px; color: var(--az-grey); margin-bottom: 10px; }
+.stat-block { display: flex; gap: 24px; }
+.stat-block div b { display: block; font-size: 16px; font-weight: 400; }
+.stat-block div span { font-size: 10px; letter-spacing: 1px; color: var(--az-grey); text-transform: uppercase; }
+.profile-dots { display: flex; gap: 6px; margin-top: 8px; }
+.profile-dots span { width: 10px; height: 10px; border-radius: 50%; }
+
+.profile-subnav { display: flex; gap: 18px; border-bottom: 1px solid var(--az-line); margin-bottom: 22px; padding-bottom: 10px; overflow-x: auto; white-space: nowrap; }
+.profile-subnav a { flex-shrink: 0; }
+.profile-subnav a { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; font-weight: 300; padding-bottom: 6px; }
+.profile-subnav a.active { font-weight: 500; border-bottom: 2px solid currentColor; }
+
+.skills-header { color: #fff; padding: 8px 16px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-top: 24px; }
+.skills-subheader { padding: 8px 16px; font-size: 11px; color: var(--az-grey); border: 1px solid var(--az-line); border-top: none; }
+.skills-subheader button { color: var(--az-orange); font-weight: 500; margin-right: 6px; }
+.skill-row { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--az-line); }
+.skill-count { background: var(--az-orange); color: #fff; font-size: 11px; padding: 3px 8px; width: 46px; text-align: center; flex-shrink: 0; }
+.skill-name { width: 150px; font-size: 13px; flex-shrink: 0; }
+.skill-add { color: var(--az-orange); font-size: 14px; }
+.skill-dots { display: flex; gap: 4px; flex-wrap: wrap; }
+.skill-dots span { width: 18px; height: 18px; border-radius: 50%; background: #ddd; border: 1px solid #ccc; }
+
+.post-card { border: 1px solid var(--az-line); margin-bottom: 16px; padding: 16px; }
+.post-card h3 { font-weight: 300; font-size: 16px; margin: 0 0 8px; }
+.post-card p { font-size: 13px; line-height: 1.6; color: #444; }
+
+.tribe-list-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--az-line); }
+.tribe-list-item .tav { width: 34px; height: 34px; }
+.tribe-sub-btn { margin-left: auto; border: 1px solid var(--az-blue); color: var(--az-blue); font-size: 10px; letter-spacing: 1px; padding: 5px 12px; }
+.tribe-sub-btn.on { background: var(--az-blue); color: #fff; }
+
+.conn-tabs { display: flex; border: 1px solid var(--az-line); }
+.conn-tabs button { flex: 1; padding: 10px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; border-right: 1px solid var(--az-line); }
+.conn-tabs button:last-child { border-right: none; }
+.conn-tabs button.active { background: var(--az-orange); color: #fff; }
+.conn-subskills { border: 1px solid var(--az-line); border-top: none; }
+.conn-subskills li a { display: block; padding: 8px 14px; font-size: 12px; }
+.conn-subskills li a:hover { background: #faf5ef; }
+.conn-chips { margin-top: 8px; }
+.conn-chip { display: flex; justify-content: space-between; align-items: center; background: var(--az-orange); color: #fff; padding: 8px 14px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+.conn-chip button { color: #fff; font-size: 13px; }
+.conn-list { margin-top: 14px; }
+.conn-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--az-line); font-size: 13px; }
+.conn-row .cav { width: 30px; height: 30px; border-radius: 50%; }
+.conn-row .ccat { margin-left: auto; font-size: 10px; letter-spacing: 1px; color: var(--az-grey); }
+
+/* ============================================================
+   SECTION: HOME
+   ============================================================ */
+.feed-card { border: 1px solid var(--az-line); margin-bottom: 20px; padding: 18px; }
+.feed-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.feed-card-head h3 { font-weight: 300; font-size: 17px; margin: 0; }
+.feed-card-head .author { font-size: 11px; color: var(--az-blue); }
+.feed-media { aspect-ratio: 16/9; margin-bottom: 10px; position: relative; overflow: hidden; }
+.feed-desc { font-size: 12.5px; line-height: 1.6; color: #444; margin-bottom: 10px; }
+
+/* ============================================================
+   SECTION: UTILITY
+   ============================================================ */
+.hidden { display: none !important; }
+.empty-note { color: var(--az-grey); font-size: 12px; padding: 20px 0; }
+@media (max-width: 1300px) { .masonry { columns: 3 190px; } }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ============================================================
+       TOPBAR
+       ============================================================ -->
+  <div id="topbar">
+    <div class="tb-brand">
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="18" stroke="#e74c3c" stroke-width="2"/>
+        <path d="M6 22 Q13 12 20 22 T34 22" stroke="#e74c3c" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <div class="tb-nav-mini">
+          <a href="#/explore" data-route="explore">EXPLORE</a>
+          <a href="#/home" data-route="home">HOME</a>
+        </div>
+      </div>
+    </div>
+    <div class="tb-center">
+      <span class="tb-icon-btn" title="Search (non-functional)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <span class="tb-icon-btn" title="Library">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/></svg>
+      </span>
+      <a class="tb-user" href="#/user/mariko" title="View profile">
+        <span class="avatar" id="tb-avatar" style="width:32px;height:32px;font-size:12px;"></span>
+        <span class="tb-user-info">
+          <span class="name" id="tb-name"></span><br>
+          <span class="flair" id="tb-flair"></span>
+        </span>
+      </a>
+    </div>
+    <div class="tb-player">
+      <div class="tb-transport">
+        <button id="btn-prev" title="Previous">⏮</button>
+        <button id="btn-play" title="Play/Pause">▶</button>
+        <button id="btn-next" title="Next">⏭</button>
+      </div>
+      <div class="tb-progress-wrap">
+        <div class="tb-progress-track"><div class="tb-progress-fill" id="progress-fill"></div></div>
+      </div>
+      <div class="tb-nowplaying" id="now-playing"></div>
+      <button class="tb-queue-toggle" id="btn-queue-toggle" title="Toggle queue">☰</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SHELL BODY: SIDENAV / CONTENT / RIGHTRAIL
+       ============================================================ -->
+  <div id="shell-body">
+    <nav id="sidenav"></nav>
+    <main id="content"></main>
+    <aside id="rightrail"></aside>
+  </div>
+</div>
+
+<!-- ============================================================
+     OVERLAY DETAIL CARD
+     ============================================================ -->
+<div id="overlay">
+  <span class="dcard-nav prev" id="ov-prev">&#10094;</span>
+  <div id="dcard-slot"></div>
+  <span class="dcard-nav next" id="ov-next">&#10095;</span>
+</div>
+
+<script>
+/* ============================================================
+   SECTION: SEED DATA
+   ============================================================ */
+const SEED = {
+  "meta": {
+    "note": "All names are fictional stand-ins for the copyrighted placeholders used in the original frames. Structure mirrors the frames 1:1.",
+    "gradientSeeds": "Use each entity's `hue` pair to generate CSS gradient artwork."
+  },
+  "currentUser": {
+    "id": "ludo",
+    "name": "Ludo van Bruckner",
+    "flair": "Amateur Fisherman",
+    "hue": [210, 260]
+  },
+  "player": {
+    "nowPlaying": "Get Loose (Remix)",
+    "artist": "Velvet Static",
+    "queue": [
+      "Get Loose (Remix)", "Harder Better Faster (Cover)", "Chrome Sunrise",
+      "Instant Crush Protocol", "Robot Rock Redux", "Something About Us Tonight",
+      "Prime Time of Your Life", "Lose Yourself to Dance Again", "Superheroes of the Night"
+    ]
+  },
+  "exploreTiles": [
+    { "id": "saint-cola",  "type": "artist", "title": "Saint Cola — On City",  "hue": [200, 220] },
+    { "id": "hairwhip",    "type": "media",  "title": "iamamiwho — fountain",   "hue": [180, 200], "azumiPick": true },
+    { "id": "nwsw",        "type": "event",  "title": "North West by South West 2014", "hue": [150, 90] },
+    { "id": "facepalm",    "type": "artist", "title": "Made in Depths",         "hue": [30, 50] },
+    { "id": "sunset-disc", "type": "media",  "title": "Taiko — Montana (video)", "hue": [15, 45] },
+    { "id": "dragon",      "type": "media",  "title": "Azumi? アズミ? — What is an Azumi?", "hue": [100, 130] },
+    { "id": "kochara",     "type": "event",  "title": "Kochara Valley Music & Arts Festival 2014", "hue": [280, 320] },
+    { "id": "waterfall",   "type": "media",  "title": "fountain — live visuals", "hue": [190, 230] },
+    { "id": "blonde",      "type": "artist", "title": "iamamiwho",              "hue": [40, 60] },
+    { "id": "velvet",      "type": "tribe",  "title": "Velvet Static",          "hue": [220, 260] },
+    { "id": "bass-hex",    "type": "artist", "title": "Bassnectarine",          "hue": [260, 300] },
+    { "id": "vapor",       "type": "media",  "title": "Vaporwave Champion — feature", "hue": [340, 20] }
+  ],
+  "artists": [
+    {
+      "id": "saint-cola", "name": "Saint Cola", "tag": "Vaporwave Champion",
+      "bio": "Either Ryan or his imaginary twin has something in his ear — he is constantly winking. As the vaporwave champion behind Saint Cola, he churns out new material like a one-man assembly line of chained samples and corporate logo glitches. His game-changing 2013 album ended up on this EP. But dusty, On City is not.",
+      "comments": [
+        { "user": "Lisa", "text": "Long live the V A P O R." },
+        { "user": "Lisa", "text": "VAPOR WAVE IS DEAD. LONG LIVE VAPORWAVE." },
+        { "user": "Lisa", "text": "I didn't understand vaporwave until I heard Saint Cola. The peculiar and now mostly defunct internet subculture is important to understanding the significance of this record." }
+      ]
+    },
+    {
+      "id": "bass-hex", "name": "Bassnectarine",
+      "bio": "A freeform electronic music producer and DJ based in Santa Cruz, California. Known for his live performances, light shows, and community engagement. He experienced an immediate sense of welcome and comfort going to raves in the mid-nineties, which led to the confluence of his heavy and ethereal style of music.",
+      "actions": ["PREVIEW", "SUBSCRIBE"]
+    },
+    {
+      "id": "facepalm", "name": "Made in Depths",
+      "bio": "Sometimes our dreams are so brilliant and our desires so mysterious that we lock them deep inside ourselves to feed and play with only when we sleep... We're based in Los Angeles now. We're not finished."
+    },
+    { "id": "blonde", "name": "iamamiwho", "bio": "Electronic music and multimedia project of a Swedish musician and singer-songwriter, in collaboration with a long-time producer. Visual collaborators drive an audiovisual, ambient, synthpop, dream-pop and trip-hop hybrid." }
+  ],
+  "events": [
+    {
+      "id": "kochara", "title": "Kochara Valley Music and Arts Festival 2014",
+      "venue": "Umpire Polo Club", "city": "Goldenvale", "time": "11:00", "date": "APR 11",
+      "description": "Commonly known as Kochara, an annual three-day music and arts festival held at the hand of the Umpire Polo Club in Indio-like country. Many music genres — rock, indie, hip hop, and electronic — as well as sculpture. Across the grounds, several stages continuously host live music.",
+      "attendees": ["Spork", "Elie Airway", "Xenomorf", "E.T.T.", "Starchild", "Moon-Watcher", "Barbarelle", "Quorra2", "Marta", "THX 1139"],
+      "actions": ["BOOKMARK", "BUY TICKETS"]
+    },
+    {
+      "id": "nwsw", "title": "North West by South West 2014",
+      "venue": "Downtown", "city": "Austin-ish, Texas", "time": "11:00", "date": "MAR 3",
+      "description": "A set of film, interactive, and music festivals and conferences taking place every year in mid-March. First organized in 1987, it has continued to grow in size every year, with parallel tracks for Music, Film and Interactive.",
+      "actions": ["BUY TICKETS"]
+    },
+    {
+      "id": "edq", "title": "Electric Daisy Quarry 2014",
+      "venue": "Motor Speedway", "city": "Las Nevadas", "time": "18:00", "date": "JUN 20",
+      "description": "A music festival held in the Spring, Summer, and Fall months. Founded by momentum, the festival has been hosted at venues across the country; the flagship event draws over 300,000 people and is the world's largest electronic music festival.",
+      "actions": ["BOOKMARK", "BUY TICKETS"]
+    }
+  ],
+  "mediaPosts": [
+    {
+      "id": "sunset-disc", "title": "Montana", "author": "Taiko",
+      "description": "Live visuals from Montana, the second single from Taiko's Awake LP, out 3/18/14. Pre-order full album at the label site for tour info. Animation & performance by Taiko. Film footage by Charles B. Music by Taiko.",
+      "comments": [{ "user": "Lisa", "text": "As Taiko, Scott H. blends swirling melodies into vaguely triumphant arcs that crisscross between stuttering beats and vocal samples, creating roiling sonic landscapes." }]
+    },
+    {
+      "id": "waterfall", "title": "fountain", "author": "iamamiwho", "azumiPick": true,
+      "description": "Official video — fountain.",
+      "comments": [{ "user": "Lisa", "text": "My friend recommended this song to me and now I have it playing non-stop in my room. It's so perfect for playing at any volume and if I play it quietly it helps me study! Such a beautiful song." }]
+    },
+    {
+      "id": "dragon", "title": "What is an Azumi?", "author": "Megami Tensei Playground",
+      "description": "Enter the Megami Tensei Playground to find out and join the discussion.", "cta": "PLAYGROUND"
+    }
+  ],
+  "tribe": {
+    "id": "velvet-static", "name": "Velvet Static", "members": "684K MEMBERS",
+    "hue": [220, 260],
+    "sections": ["GALLERY", "ANNOUNCEMENTS", "BOARD", "EVENTS", "CONTESTS", "MEMBERS", "LIBRARY"],
+    "actions": ["SUBSCRIBE", "CONNECT", "COLLABORATE", "MESSAGE"],
+    "gallery": { "note": "12-tile B&W masonry — generate greyscale gradient tiles" },
+    "announcements": [
+      { "title": "Exclusive Remix to Get Loose", "premium": true, "sub": "For Premium Subscribers Only" },
+      { "title": "RECORDING — studio session stream", "premium": false }
+    ],
+    "board": [
+      { "title": "Le café Velvet", "author": "Edgar Doppel", "comments": 44 },
+      { "title": "ヴェルヴェット・スタティック〜Hi-Fi(ve)〜", "author": "Aoi" }
+    ],
+    "events": [
+      { "date": "JAN 30", "title": "Event — Venue Tribe, 19:00" },
+      { "date": "FEB 5",  "title": "Event — Venue Tribe, 12:00" },
+      { "date": "MAR 15", "title": "Event — Venue Tribe, 16:00" },
+      { "date": "APR 20", "title": "Event — Venue Tribe, 20:00" },
+      { "date": "JUN 25", "title": "Event — Venue Tribe, 20:00" }
+    ],
+    "contests": [
+      { "title": "Remix Contest — Get Loose", "entries": 50, "prize": "1:00" },
+      { "title": "Fan Art Contest", "entries": 50 },
+      { "title": "Dance Video Contest", "entries": 50 },
+      { "title": "Cover Contest", "entries": 50 }
+    ]
+  },
+  "profile": {
+    "id": "mariko", "name": "Mariko Antoinette", "flair": "Royal Equestrian",
+    "hue": [340, 20],
+    "stats": { "kudos": "12K", "zums": 6543, "skills": 789 },
+    "sections": ["GALLERY", "PORTFOLIO", "POSTS", "TRIBES", "EVENTS", "CONNECTIONS", "LIBRARY"],
+    "skills": [
+      { "name": "Carpentry", "count": "100K" }, { "name": "Polo", "count": "6900" },
+      { "name": "Charades", "count": "888" },   { "name": "Equestrian vaulting", "count": "76" },
+      { "name": "Gymkhana", "count": "59" },    { "name": "Reining", "count": "54" },
+      { "name": "Buckskin", "count": "43" },    { "name": "Polocrosse", "count": "30" },
+      { "name": "Tent pegging", "count": "23" },{ "name": "Mounted archery", "count": "1" },
+      { "name": "Fox hunting", "count": "+" }
+    ],
+    "posts": [
+      { "title": "Nouvelle vague", "body": "The term appeared under the pen of a critic in the 3 October 1957 issue, in an ecological survey of the phenomena of a generation." },
+      { "title": "La maison japonaise", "body": "Tatamis are traditionally made with layers of compressed rice straw, forming a mat of great quality." }
+    ],
+    "tribes": [
+      "Aphelion Twin", "Brian Emo", "Boards of Canadia", "Casino Versus Tokyo",
+      "CocoRosé", "Velvet Static", "Flying Lotos", "Jeanne Birdie", "iamamiwho", "M84"
+    ],
+    "events": [
+      { "date": "JAN 18", "title": "Mario Party — Peach's Castle, Nintendo, 14:00" },
+      { "date": "JAN 11", "title": "Concert for the Philippines — Club Nokia, 19:00" },
+      { "date": "JAN 19", "title": "Sun Ra Arkestra-like — The Forum Theatre, 19:00" },
+      { "date": "APR 11", "title": "Kochara 2014 — Umpire Polo Club, 11:00" },
+      { "date": "JUN 20", "title": "Electric Daisy Quarry 2014 — Las Nevadas, 18:00" },
+      { "date": "JUN 21", "title": "Lady Georgia — Staples-ish Center, 20:00" }
+    ],
+    "connections": [
+      { "name": "Spork",        "flair": "Vulcanish",       "cat": "SPORT" },
+      { "name": "Elie Airway",  "flair": "Contact Seeker",  "cat": "ART" },
+      { "name": "Xenomorf",     "flair": "Extraterrestrial","cat": "DANCE" },
+      { "name": "E.T.T.",       "flair": "Extra Terrestrial","cat": "ART" },
+      { "name": "Starchild",    "flair": "Beyond Infinity", "cat": "MUSIC" },
+      { "name": "Moon-Watcher", "flair": "Ape-Man",         "cat": "SPORT" },
+      { "name": "Barbarelle",   "flair": "Space Agent",     "cat": "DANCE" },
+      { "name": "Quorra2",      "flair": "ISO",             "cat": "ART" },
+      { "name": "Marta",        "flair": "Orion Slave Girl","cat": "DANCE" },
+      { "name": "THX 1139",     "flair": "Man",             "cat": "SPORT" }
+    ],
+    "connectionFilters": {
+      "ART":   ["ANIMATION", "GRAFFITI", "GRAPHIC DESIGN", "ILLUSTRATION", "PHOTOGRAPHY"],
+      "MUSIC": ["AMBIENT", "ELECTRONIC", "HIP HOP", "JAZZ", "ROCK"],
+      "DANCE": ["BREAKDANCE", "HARLEM SHAKE", "HULA HOOP", "SHUFFLE", "TWERK"],
+      "SPORT": ["FREERUN", "ROCKCLIMB", "SKATE", "SNOW", "SURF"]
+    }
+  },
+  "homeFeed": [
+    {
+      "title": "Electroma-like Short Film", "author": "Velvet Static", "views": "500K",
+      "description": "Begins with a view of rocks on a mountain range. It then cuts to two robots getting into a car and driving into town. They reach a building and walk inside — a black and white room with white-suited people walking around and operating.",
+      "comments": [{ "user": "Lisa", "text": "hulle pittoreske fide quam. In tuo habitasse platea dictumst." }]
+    },
+    { "title": "Suzy at the Lighthouse", "author": "Sam O.", "description": "Looking through binoculars from the lighthouse gazebo." }
+  ],
+  "feedNotifications": [
+    "Velvet Static posted a video",
+    "Moon-Watcher commented on your post",
+    "Area-18 Stewardess subscribed to you",
+    "Marie Antoinette-like subscribed to you"
+  ],
+  "chatRoster": [
+    { "name": "Squirt", "online": true }, { "name": "TMA-1 Site Technician #1", "online": true },
+    { "name": "Starchild", "online": false }, { "name": "Moon-Watcher", "online": true },
+    { "name": "Area-18 Stewardess", "online": true }, { "name": "Dr. Heywood R. Lloyd", "online": true },
+    { "name": "Frank Poole-ish", "online": false }, { "name": "Andrei Smyslov", "online": true }
+  ],
+  "chatThread": {
+    "with": "HAL-9001",
+    "messages": [
+      { "from": "them", "text": "Where the hell did you get that idea, HAL?" },
+      { "from": "them", "text": "Lud, although you took very thorough precautions in the pod against my hearing you, I could see your lips move." },
+      { "from": "me",   "text": "Alright, HAL. I'll go in through the emergency airlock." },
+      { "from": "them", "text": "Without your space helmet, Lud? You're going to find that rather difficult." },
+      { "from": "me",   "text": "HAL, I won't argue with you anymore! Open the doors!" },
+      { "from": "them", "text": "Lud, this conversation can serve no purpose anymore. Goodbye." }
+    ]
+  }
+};
+
+/* ============================================================
+   SECTION: HELPERS
+   ============================================================ */
+const CAT_COLOR_VAR = {
+  media: '--az-red', gallery: '--az-red', library: '--az-red', artist: '--az-red',
+  connections: '--az-orange', board: '--az-orange', members: '--az-orange', portfolio: '--az-orange',
+  venues: '--az-yellow', playground: '--az-yellow',
+  events: '--az-green', contests: '--az-green',
+  tribes: '--az-blue', feed: '--az-blue', posts: '--az-blue', tribe: '--az-blue',
+  azumipick: '--az-purple', pick: '--az-purple'
+};
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function colorFor(catKey) { return cssVar(CAT_COLOR_VAR[catKey] || '--az-grey'); }
+
+function gradientArt(hue, animated) {
+  const [h1, h2] = hue;
+  const bg = `linear-gradient(135deg, hsl(${h1},68%,62%), hsl(${h2},60%,42%))`;
+  return animated
+    ? `<div class="backdrop-art" style="background:${bg};"></div>`
+    : `<div class="tile-art" style="background:${bg};"></div>`;
+}
+function initials(name) {
+  return name.split(' ').map(w => w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+}
+function avatarHtml(name, hue, size) {
+  size = size || 30;
+  const h1 = hue ? hue[0] : (hashStr(name) % 360);
+  const h2 = hue ? hue[1] : ((hashStr(name)+40) % 360);
+  return `<span class="avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.36)}px;background:linear-gradient(135deg,hsl(${h1},60%,55%),hsl(${h2},55%,40%));">${initials(name)}</span>`;
+}
+function hashStr(s) {
+  let h = 0;
+  for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============================================================
+   SECTION: APP STATE (session-only, in-memory)
+   ============================================================ */
+const state = {
+  route: { view: 'explore', param: null },
+  player: { playing: false, trackIndex: 0 },
+  overlayIndex: null,
+  subscriptions: {},      // id -> bool (artists, tribes)
+  bookmarks: {},          // event id -> bool
+  goAttending: {},        // tribe/profile event key -> bool
+  tribeAction: { subscribe: false, connect: false, collaborate: false, message: false },
+  tribeActiveSection: 'GALLERY',
+  tribeMenuOpen: false,
+  boardExtra: [],
+  profileActiveSection: 'PORTFOLIO',
+  profileSkillsExtra: [],
+  connActiveCat: 'ART',
+  connChips: [],
+  railCollapsed: false
+};
+
+// Cards eligible for overlay (exclude the 'velvet' tribe tile which routes directly)
+const cardableTiles = SEED.exploreTiles.filter(t => t.type !== 'tribe');
+
+/* ============================================================
+   SECTION: ROUTER
+   ============================================================ */
+function parseHash() {
+  const h = location.hash.replace(/^#\/?/, '');
+  const parts = h.split('/').filter(Boolean);
+  if (parts.length === 0) return { view: 'explore', param: null };
+  if (parts[0] === 'tribe') return { view: 'tribe', param: parts[1] || SEED.tribe.id };
+  if (parts[0] === 'user') return { view: 'profile', param: parts[1] || SEED.profile.id };
+  return { view: parts[0], param: parts[1] || null };
+}
+function navigate(hash) { location.hash = hash; }
+window.addEventListener('hashchange', () => { state.route = parseHash(); render(); });
+
+/* ============================================================
+   SECTION: TOPBAR RENDER + PLAYER
+   ============================================================ */
+function renderTopbarUser() {
+  const u = SEED.currentUser;
+  document.getElementById('tb-avatar').outerHTML = avatarHtml(u.name, u.hue, 32).replace('class="avatar"','class="avatar" id="tb-avatar"');
+  document.getElementById('tb-name').textContent = u.name;
+  document.getElementById('tb-flair').textContent = u.flair;
+}
+function renderPlayer() {
+  document.getElementById('now-playing').textContent = SEED.player.queue[state.player.trackIndex] + ' — ' + SEED.player.artist;
+  document.getElementById('btn-play').textContent = state.player.playing ? '❚❚' : '▶';
+  document.getElementById('progress-fill').classList.toggle('playing', state.player.playing);
+}
+document.getElementById('btn-play').addEventListener('click', () => {
+  state.player.playing = !state.player.playing;
+  renderPlayer();
+});
+document.getElementById('btn-next').addEventListener('click', () => {
+  state.player.trackIndex = (state.player.trackIndex + 1) % SEED.player.queue.length;
+  renderPlayer(); renderRightRail();
+});
+document.getElementById('btn-prev').addEventListener('click', () => {
+  state.player.trackIndex = (state.player.trackIndex - 1 + SEED.player.queue.length) % SEED.player.queue.length;
+  renderPlayer(); renderRightRail();
+});
+document.getElementById('btn-queue-toggle').addEventListener('click', () => {
+  state.railCollapsed = !state.railCollapsed;
+  document.getElementById('shell-body').classList.toggle('rail-collapsed', state.railCollapsed);
+});
+
+/* ============================================================
+   SECTION: SIDENAV RENDER
+   ============================================================ */
+const SITE_NAV = [
+  { label: 'MEDIA', cat: 'media', href: '#/explore' },
+  { label: 'TRIBES', cat: 'tribes', href: '#/tribe/velvet-static' },
+  { label: 'EVENTS', cat: 'events', href: '#/explore' },
+  { label: 'VENUES', cat: 'venues', disabled: true },
+  { label: 'PLAYGROUND', cat: 'playground', disabled: true },
+  { label: 'CONNECTIONS', cat: 'connections', href: '#/user/mariko' }
+];
+
+function siteNavHtml(activeLabels) {
+  return `<ul class="sn-site">${SITE_NAV.map(item => {
+    const color = colorFor(item.cat);
+    const isActive = activeLabels && activeLabels.includes(item.label);
+    return `<li><a class="${item.disabled ? 'disabled' : ''} ${isActive ? 'active' : ''}"
+      style="color:${isActive ? '#fff' : color}; border-color:${color}; background-color:${isActive ? color : 'transparent'};"
+      ${item.disabled ? '' : `href="${item.href}"`}>${item.label}${item.disabled ? ' <span style=\"font-size:8px;\">(soon)</span>' : ''}</a></li>`;
+  }).join('')}</ul>`;
+}
+
+function renderSideNav() {
+  const nav = document.getElementById('sidenav');
+  const v = state.route.view;
+  nav.classList.toggle('on-backdrop', v === 'tribe');
+
+  if (v === 'home') {
+    const u = SEED.currentUser;
+    nav.innerHTML = `
+      <div class="sn-profile-card">
+        <div class="pname">${escapeHtml(u.name)}</div>
+        <div class="pflair">${escapeHtml(u.flair)}</div>
+        <div class="sn-dots">
+          <span style="background:var(--az-blue)"></span><span style="background:var(--az-orange)"></span>
+          <span style="background:var(--az-yellow)"></span><span style="background:var(--az-green)"></span>
+        </div>
+        <ul class="sn-sub">
+          <li><a href="#/user/mariko" style="color:${colorFor('gallery')}">GALLERY</a></li>
+          <li><a href="#/user/mariko" style="color:${colorFor('portfolio')}">PORTFOLIO</a></li>
+          <li><a href="#/user/mariko" style="color:${colorFor('posts')}">POSTS</a></li>
+          <li><a href="#/user/mariko" style="color:${colorFor('tribes')}">TRIBES</a></li>
+          <li><a href="#/user/mariko" style="color:${colorFor('events')}">EVENTS</a></li>
+          <li><a href="#/user/mariko" style="color:${colorFor('connections')}">CONNECTIONS</a></li>
+          <li><a href="#/user/mariko" style="color:${colorFor('library')}">LIBRARY</a></li>
+        </ul>
+      </div>
+      ${siteNavHtml(['MEDIA'])}
+    `;
+  } else if (v === 'profile') {
+    nav.innerHTML = siteNavHtml(['CONNECTIONS']);
+  } else if (v === 'tribe') {
+    nav.innerHTML = siteNavHtml(['TRIBES']);
+  } else {
+    nav.innerHTML = siteNavHtml(['MEDIA']);
+  }
+}
+
+/* ============================================================
+   SECTION: RIGHTRAIL RENDER
+   ============================================================ */
+function renderRightRail() {
+  const rail = document.getElementById('rightrail');
+  rail.innerHTML = `
+    <div class="rr-feed-list">
+      <div class="rr-module-header" style="background:${colorFor('feed')}">FEED</div>
+      ${SEED.feedNotifications.map((n,i) => `
+        <div class="rr-feed-item">
+          ${avatarHtml(n, null, 30)}
+          <span>${escapeHtml(n)}</span>
+        </div>`).join('')}
+    </div>
+    <div class="rr-chat-list">
+      <div class="rr-module-header" style="background:${colorFor('events')}">CHAT</div>
+      ${SEED.chatRoster.map(c => `
+        <div class="rr-chat-item">
+          ${avatarHtml(c.name, null, 24)}
+          <span>${escapeHtml(c.name)}</span>
+          <span class="dot ${c.online ? 'online' : 'offline'}"></span>
+        </div>`).join('')}
+    </div>
+    <div class="rr-thread">
+      <div class="rr-module-header" style="background:${colorFor('connections')}">${escapeHtml(SEED.chatThread.with)}</div>
+      <div class="rr-thread-body">
+        ${SEED.chatThread.messages.map(m => `<div class="rr-bubble ${m.from === 'me' ? 'me' : 'them'}">${escapeHtml(m.text)}</div>`).join('')}
+      </div>
+      <div class="rr-thread-input">
+        <input type="text" placeholder="respond to ${escapeHtml(SEED.chatThread.with)}...">
+      </div>
+    </div>
+    <div class="rr-queue">
+      <div class="rr-module-header" style="background:${colorFor('tribes')}">QUEUE</div>
+      ${SEED.player.queue.map((t,i) => `
+        <div class="rr-queue-item ${i === state.player.trackIndex ? 'now-playing' : ''}" data-qidx="${i}">
+          <span class="qthumb avatar" style="background:linear-gradient(135deg,hsl(${(i*37)%360},60%,55%),hsl(${(i*37+50)%360},55%,40%));border-radius:2px;"></span>
+          <span class="qtitle">${escapeHtml(t)}</span>
+        </div>`).join('')}
+    </div>
+  `;
+  rail.querySelectorAll('[data-qidx]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.player.trackIndex = parseInt(el.dataset.qidx, 10);
+      renderPlayer(); renderRightRail();
+    });
+  });
+}
+
+/* ============================================================
+   SECTION: EXPLORE VIEW
+   ============================================================ */
+function renderExplore() {
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="view-pad">
+      <h1 class="view-title">Explore</h1>
+      <div class="masonry" id="masonry"></div>
+    </div>
+  `;
+  const masonry = document.getElementById('masonry');
+  masonry.innerHTML = SEED.exploreTiles.map((tile, idx) => {
+    const underline = colorFor(tile.type === 'artist' ? 'media' : tile.type);
+    return `
+      <div class="tile" data-tile-id="${tile.id}" data-tile-type="${tile.type}">
+        ${gradientArt(tile.hue, false)}
+        ${tile.azumiPick ? `<div class="tile-pick-ribbon">Azumi Pick</div>` : ''}
+        <div class="tile-veil">
+          <div class="tile-title-wrap">
+            <div class="tile-title">${escapeHtml(tile.title)}</div>
+            <div class="tile-underline" style="background:${underline}"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  masonry.querySelectorAll('.tile').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.tileId;
+      const type = el.dataset.tileType;
+      if (type === 'tribe') { navigate('#/tribe/velvet-static'); return; }
+      const cardIdx = cardableTiles.findIndex(t => t.id === id);
+      openOverlay(cardIdx);
+    });
+  });
+}
+
+/* ============================================================
+   SECTION: OVERLAY DETAIL CARDS
+   ============================================================ */
+function cardVariantFor(tile) {
+  if (SEED.artists.find(a => a.id === tile.id)) return 'artist';
+  if (SEED.mediaPosts.find(m => m.id === tile.id)) return 'media';
+  if (SEED.events.find(e => e.id === tile.id)) return 'event';
+  return 'artist'; // fallback (e.g. 'vapor' tile reuses saint-cola-esque bio not in data -> generic)
+}
+
+function renderArtistCard(tile) {
+  let a = SEED.artists.find(x => x.id === tile.id);
+  if (!a) a = { id: tile.id, name: tile.title, bio: 'No further biography on file yet.' };
+  const subKey = 'sub-' + a.id;
+  const subscribed = !!state.subscriptions[subKey];
+  const comments = a.comments || [];
+  return `
+    <div class="dcard">
+      <span class="dcard-close" id="dcard-x">&times;</span>
+      <div class="dcard-header">${escapeHtml(a.name)}</div>
+      <div class="dcard-media portrait">${gradientArt(tile.hue, false)}</div>
+      <div class="dcard-dots">
+        <span style="background:var(--az-red)"></span><span style="background:var(--az-orange)"></span>
+        <span style="background:var(--az-yellow)"></span><span style="background:var(--az-green)"></span>
+        <span style="background:var(--az-blue)"></span>
+      </div>
+      <div class="dcard-body"><p>${escapeHtml(a.bio)}</p></div>
+      <div class="dcard-actions">
+        <button id="dcard-preview">PREVIEW</button>
+        <button id="dcard-sub" class="${subscribed ? 'on' : ''}">${subscribed ? 'SUBSCRIBED' : 'SUBSCRIBE'}</button>
+      </div>
+      ${comments.length ? `
+      <div class="dcard-comments">
+        ${comments.map(c => `<div class="dcard-comment">${avatarHtml(c.user, null, 30)}<div><span class="cname">${escapeHtml(c.user)}</span>${escapeHtml(c.text)}</div></div>`).join('')}
+        <div class="dcard-comment-input">${avatarHtml(SEED.currentUser.name, SEED.currentUser.hue, 28)}<input type="text" placeholder="Write a comment..."></div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function renderMediaCard(tile) {
+  const m = SEED.mediaPosts.find(x => x.id === tile.id) || { id: tile.id, title: tile.title, author: '', description: '' };
+  if (m.cta) {
+    return `
+      <div class="dcard">
+        <span class="dcard-close" id="dcard-x">&times;</span>
+        <div class="dcard-header">${escapeHtml(m.title)}</div>
+        <div class="dcard-media">${gradientArt(tile.hue, false)}
+          <div class="dcard-play-circle"><svg viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="12" r="11" fill-opacity="0.25"/><path d="M9 7l8 5-8 5V7z"/></svg></div>
+        </div>
+        <div class="dcard-body"><p>${escapeHtml(m.description)}</p></div>
+        <div class="playground-cta">${escapeHtml(m.cta)} — coming soon</div>
+      </div>
+    `;
+  }
+  const comments = m.comments || [];
+  return `
+    <div class="dcard">
+      <span class="dcard-close" id="dcard-x">&times;</span>
+      <div class="dcard-header">${escapeHtml(m.title)} <span style="font-size:12px;color:var(--az-blue);text-transform:none;letter-spacing:0;">— ${escapeHtml(m.author||'')}</span></div>
+      <div class="dcard-media">${gradientArt(tile.hue, false)}
+        <div class="dcard-play-circle"><svg viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="12" r="11" fill-opacity="0.25"/><path d="M9 7l8 5-8 5V7z"/></svg></div>
+      </div>
+      ${m.azumiPick ? `<div class="tile-pick-ribbon" style="position:static;">Azumi Pick</div>` : ''}
+      <div class="dcard-body"><p>${escapeHtml(m.description)}</p></div>
+      <div class="dcard-comments">
+        ${comments.map(c => `<div class="dcard-comment">${avatarHtml(c.user, null, 30)}<div><span class="cname">${escapeHtml(c.user)}</span>${escapeHtml(c.text)}</div></div>`).join('')}
+        <div class="dcard-comment-input">${avatarHtml(SEED.currentUser.name, SEED.currentUser.hue, 28)}<input type="text" placeholder="Write a comment..."></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderEventCard(tile) {
+  const e = SEED.events.find(x => x.id === tile.id);
+  const bookmarked = !!state.bookmarks[e.id];
+  const [mon, day] = e.date.split(' ');
+  return `
+    <div class="dcard">
+      <span class="dcard-close" id="dcard-x">&times;</span>
+      <div class="dcard-event-top">
+        <div class="dcard-votes">99<br>VOTES
+          <div class="dcard-ab" style="margin-top:6px;">
+            <div style="background:var(--az-red)">A</div><div style="background:var(--az-blue)">B</div>
+          </div>
+        </div>
+        <div class="dcard-media" style="width:100px;aspect-ratio:1/1;">${gradientArt(tile.hue, false)}</div>
+        <div class="dcard-datebadge"><div class="mon">${mon}</div><div class="day">${day}</div></div>
+      </div>
+      <div class="dcard-event-meta">
+        <h3>${escapeHtml(e.title)}</h3>
+        <div class="venue" style="color:var(--az-blue);">${escapeHtml(e.venue)}</div>
+        <div class="venue" style="color:var(--az-orange);">${escapeHtml(e.city)}</div>
+        <div class="venue" style="color:var(--az-green);">${escapeHtml(e.time)}</div>
+      </div>
+      <div class="dcard-body"><p>${escapeHtml(e.description)}</p></div>
+      ${e.actions && e.actions.includes('BOOKMARK') ? `<div class="dcard-fullwidth-btn bookmark ${bookmarked?'on':''}" id="dcard-bookmark">${bookmarked?'BOOKMARKED':'BOOKMARK'}</div>` : ''}
+      ${e.actions && e.actions.includes('BUY TICKETS') ? `<div class="dcard-fullwidth-btn tickets">BUY TICKETS</div>` : ''}
+      ${e.attendees ? `<div class="dcard-attendees">${e.attendees.map(n => avatarHtml(n, null, 34).replace('avatar','avatar att')).join('')}</div>` : ''}
+    </div>
+  `;
+}
+
+function renderCardFor(index) {
+  const tile = cardableTiles[index];
+  const variant = cardVariantFor(tile);
+  if (variant === 'artist') return renderArtistCard(tile);
+  if (variant === 'media') return renderMediaCard(tile);
+  if (variant === 'event') return renderEventCard(tile);
+  return renderArtistCard(tile);
+}
+
+function openOverlay(index) {
+  if (index < 0 || index >= cardableTiles.length) return;
+  state.overlayIndex = index;
+  document.getElementById('dcard-slot').innerHTML = renderCardFor(index);
+  document.getElementById('overlay').classList.add('open');
+  wireCardInteractions();
+}
+function closeOverlay() {
+  document.getElementById('overlay').classList.remove('open');
+  state.overlayIndex = null;
+}
+function wireCardInteractions() {
+  const x = document.getElementById('dcard-x');
+  if (x) x.addEventListener('click', closeOverlay);
+  const sub = document.getElementById('dcard-sub');
+  if (sub) sub.addEventListener('click', () => {
+    const tile = cardableTiles[state.overlayIndex];
+    const key = 'sub-' + tile.id;
+    state.subscriptions[key] = !state.subscriptions[key];
+    document.getElementById('dcard-slot').innerHTML = renderCardFor(state.overlayIndex);
+    wireCardInteractions();
+  });
+  const bm = document.getElementById('dcard-bookmark');
+  if (bm) bm.addEventListener('click', () => {
+    const tile = cardableTiles[state.overlayIndex];
+    state.bookmarks[tile.id] = !state.bookmarks[tile.id];
+    document.getElementById('dcard-slot').innerHTML = renderCardFor(state.overlayIndex);
+    wireCardInteractions();
+  });
+  const preview = document.getElementById('dcard-preview');
+  if (preview) preview.addEventListener('click', () => {
+    state.player.playing = true;
+    renderPlayer();
+  });
+}
+document.getElementById('ov-prev').addEventListener('click', () => {
+  if (state.overlayIndex === null) return;
+  openOverlay((state.overlayIndex - 1 + cardableTiles.length) % cardableTiles.length);
+});
+document.getElementById('ov-next').addEventListener('click', () => {
+  if (state.overlayIndex === null) return;
+  openOverlay((state.overlayIndex + 1) % cardableTiles.length);
+});
+document.getElementById('overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'overlay') closeOverlay();
+});
+document.addEventListener('keydown', (e) => {
+  if (!document.getElementById('overlay').classList.contains('open')) return;
+  if (e.key === 'Escape') closeOverlay();
+  if (e.key === 'ArrowLeft') document.getElementById('ov-prev').click();
+  if (e.key === 'ArrowRight') document.getElementById('ov-next').click();
+});
+
+/* ============================================================
+   SECTION: TRIBE VIEW
+   ============================================================ */
+function tribeMiniMasonry(count, hue, mode) {
+  let items = '';
+  for (let i=0;i<count;i++) {
+    const h1 = (hue[0] + i*11) % 360, h2 = (hue[1] + i*7) % 360;
+    items += `<div class="mini-tile ${mode}" style="background:linear-gradient(135deg,hsl(${h1},60%,55%),hsl(${h2},55%,40%));"></div>`;
+  }
+  return `<div class="mini-masonry">${items}</div>`;
+}
+
+function tribeSectionContent(t) {
+  const sec = state.tribeActiveSection;
+  if (sec === 'GALLERY') {
+    return `<h2 style="color:${colorFor('gallery')}">Gallery</h2>${tribeMiniMasonry(12, t.hue, 'greyscale')}`;
+  }
+  if (sec === 'ANNOUNCEMENTS') {
+    return `<h2 style="color:${colorFor('feed')}">Announcements</h2>` + t.announcements.map(a => `
+      <div class="announce-item ${a.premium ? 'premium' : ''}">
+        <div style="font-weight:400;">${escapeHtml(a.title)}</div>
+      </div>`).join('');
+  }
+  if (sec === 'BOARD') {
+    const all = state.boardExtra.concat(t.board);
+    return `<h2 style="color:${colorFor('board')}">Board</h2>
+      <div class="board-composer">
+        <input type="text" id="board-input" placeholder="Post something on the board...">
+        <button id="board-post-btn">POST</button>
+      </div>
+      ${all.map(b => `<div class="board-post"><div class="bt">${escapeHtml(b.title)}</div><div class="ba">${escapeHtml(b.author)}${b.comments ? ' · ' + b.comments + ' comments' : ''}</div></div>`).join('')}`;
+  }
+  if (sec === 'EVENTS') {
+    return `<h2 style="color:${colorFor('events')}">Events</h2>` + t.events.map((ev,i) => {
+      const key = 'tribe-ev-' + i;
+      const on = !!state.goAttending[key];
+      return `<div class="calendar-row"><div class="cdate">${escapeHtml(ev.date)}</div><div class="ctitle">${escapeHtml(ev.title)}</div><button class="go-btn ${on?'on':''}" data-go="${key}">${on?'GOING':'GO'}</button></div>`;
+    }).join('');
+  }
+  if (sec === 'CONTESTS') {
+    return `<h2 style="color:${colorFor('contests')}">Contests</h2>` + t.contests.map(c => `
+      <div class="contest-row"><span>${escapeHtml(c.title)}</span><span class="entries">${c.entries} entries${c.prize ? ' · prize ' + c.prize : ''}</span></div>`).join('');
+  }
+  if (sec === 'MEMBERS') {
+    const members = SEED.profile.connections;
+    return `<h2 style="color:${colorFor('members')}">Members</h2>
+      <input type="text" class="member-search" id="member-search" placeholder="Search ${t.members.split(' ')[0]}...">
+      <div id="member-list">${members.map(m => `<div class="member-row" data-name="${escapeHtml(m.name.toLowerCase())}">${avatarHtml(m.name,null,28).replace('avatar','avatar mav')}<span>${escapeHtml(m.name)}</span><span class="mflair">${escapeHtml(m.flair)}</span></div>`).join('')}</div>`;
+  }
+  if (sec === 'LIBRARY') {
+    return `<h2 style="color:${colorFor('library')}">Library</h2>${tribeMiniMasonry(9, t.hue, 'redtint')}`;
+  }
+  return '';
+}
+
+function renderTribe() {
+  const t = SEED.tribe;
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="backdrop">
+      ${gradientArt(t.hue, true)}
+      <div class="backdrop-legend">
+        <span style="background:var(--az-red)"></span><span style="background:var(--az-orange)"></span>
+        <span style="background:var(--az-yellow)"></span><span style="background:var(--az-green)"></span>
+        <span style="background:var(--az-blue)"></span><span style="background:var(--az-purple)"></span>
+      </div>
+      <div class="tribe-wrap">
+        <div class="tribe-emblem" id="tribe-emblem" style="background:linear-gradient(135deg,hsl(${t.hue[0]},60%,50%),hsl(${t.hue[1]},55%,35%));">${initials(t.name)}</div>
+        <div class="tribe-actions" id="tribe-actions">
+          <button data-act="subscribe" class="${state.tribeAction.subscribe?'active':''}" style="background:${colorFor('tribes')}" title="Subscribe"></button>
+          <button data-act="connect" class="${state.tribeAction.connect?'active':''}" style="background:${colorFor('connections')}" title="Connect"></button>
+          <button data-act="collaborate" class="${state.tribeAction.collaborate?'active':''}" style="background:${colorFor('playground')}" title="Collaborate"></button>
+          <button data-act="message" class="${state.tribeAction.message?'active':''}" style="background:${colorFor('events')}" title="Message"></button>
+        </div>
+        <div class="tribe-menu ${state.tribeMenuOpen ? '' : 'hidden'}" id="tribe-menu">
+          <div class="tribe-menu-header" style="background:${colorFor('board')}">${escapeHtml(t.name)}</div>
+          <ul>
+            ${t.sections.map(s => `<li><a data-sec="${s}" class="${state.tribeActiveSection===s?'active':''}" style="color:${colorFor(s.toLowerCase())}">${s}</a></li>`).join('')}
+          </ul>
+          <div class="tribe-menu-footer">${escapeHtml(t.members)}</div>
+        </div>
+        <div class="tribe-panel">${tribeSectionContent(t)}</div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('tribe-emblem').addEventListener('click', () => {
+    state.tribeMenuOpen = !state.tribeMenuOpen;
+    renderTribe();
+  });
+  document.querySelectorAll('#tribe-menu [data-sec]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.tribeActiveSection = el.dataset.sec;
+      renderTribe();
+    });
+  });
+  document.querySelectorAll('#tribe-actions [data-act]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.tribeAction[el.dataset.act] = !state.tribeAction[el.dataset.act];
+      renderTribe();
+    });
+  });
+  const boardBtn = document.getElementById('board-post-btn');
+  if (boardBtn) boardBtn.addEventListener('click', () => {
+    const inp = document.getElementById('board-input');
+    if (inp && inp.value.trim()) {
+      state.boardExtra.unshift({ title: inp.value.trim(), author: SEED.currentUser.name });
+      renderTribe();
+    }
+  });
+  document.querySelectorAll('#tribe-actions ~ .tribe-panel [data-go]').forEach(()=>{});
+  document.querySelectorAll('[data-go]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.goAttending[el.dataset.go] = !state.goAttending[el.dataset.go];
+      renderTribe();
+    });
+  });
+  const search = document.getElementById('member-search');
+  if (search) search.addEventListener('input', () => {
+    const q = search.value.toLowerCase();
+    document.querySelectorAll('#member-list .member-row').forEach(row => {
+      row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+    });
+  });
+}
+
+/* ============================================================
+   SECTION: PROFILE VIEW
+   ============================================================ */
+function profileSkillsHtml(p) {
+  const all = p.skills.concat(state.profileSkillsExtra);
+  const maxDots = 10;
+  return `
+    <div class="skills-header" style="background:${colorFor('connections')}">Skills</div>
+    <div class="skills-subheader"><button id="add-skill-btn">+</button>give ${p.name.split(' ')[0]} a new skill or add to their existing skills below</div>
+    ${all.map((s, i) => {
+      const dotCount = Math.max(1, maxDots - i);
+      let dots = '';
+      for (let d=0; d<dotCount; d++) dots += `<span></span>`;
+      return `<div class="skill-row">
+        <div class="skill-count">${escapeHtml(String(s.count))}</div>
+        <div class="skill-name">${escapeHtml(s.name)}</div>
+        <span class="skill-add">+</span>
+        <div class="skill-dots">${dots}</div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function profileConnectionsHtml(p) {
+  const cats = Object.keys(p.connectionFilters);
+  const activeCat = state.connActiveCat;
+  const chips = state.connChips;
+  let list = p.connections;
+  if (chips.length) {
+    list = list.filter(c => chips.includes(c.cat));
+  }
+  return `
+    <h2 style="margin:0 0 14px;font-weight:200;font-size:18px;">search ${p.name.split(' ')[0]}'s connections</h2>
+    <div class="conn-tabs">
+      ${cats.map(c => `<button data-cat="${c}" class="${c===activeCat?'active':''}">${c}</button>`).join('')}
+    </div>
+    <ul class="conn-subskills">
+      ${p.connectionFilters[activeCat].map(s => `<li><a data-subskill="${escapeHtml(s)}">${escapeHtml(s)}</a></li>`).join('')}
+    </ul>
+    <div class="conn-chips">
+      ${chips.map(c => `<div class="conn-chip"><span>${escapeHtml(c)}</span><button data-remove-chip="${escapeHtml(c)}">&times;</button></div>`).join('')}
+    </div>
+    <div class="conn-list">
+      ${list.map(c => `<div class="conn-row">${avatarHtml(c.name,null,30).replace('avatar','avatar cav')}<span>${escapeHtml(c.name)}</span><span style="color:var(--az-grey);font-size:11px;">${escapeHtml(c.flair)}</span><span class="ccat">${c.cat}</span></div>`).join('')}
+      ${list.length===0 ? '<div class="empty-note">No connections match the current filters.</div>' : ''}
+    </div>
+  `;
+}
+
+function profileSectionContent(p) {
+  const sec = state.profileActiveSection;
+  if (sec === 'GALLERY') {
+    return `<h2 style="color:${colorFor('gallery')}">Gallery</h2>${tribeMiniMasonry(9, p.hue, '')}`;
+  }
+  if (sec === 'PORTFOLIO') {
+    return `<h2 style="color:${colorFor('portfolio')}">Portfolio</h2>${tribeMiniMasonry(6, p.hue, '')}${profileSkillsHtml(p)}`;
+  }
+  if (sec === 'POSTS') {
+    return `<h2 style="color:${colorFor('posts')}">Posts</h2>` + p.posts.map(post => `
+      <div class="post-card">
+        <h3>${escapeHtml(post.title)}</h3>
+        <p>${escapeHtml(post.body)}</p>
+        <div class="dcard-comment-input" style="padding:0;">${avatarHtml(SEED.currentUser.name, SEED.currentUser.hue, 26)}<input type="text" placeholder="Write a comment..."></div>
+      </div>`).join('');
+  }
+  if (sec === 'TRIBES') {
+    return `<h2 style="color:${colorFor('tribes')}">Tribes</h2>` + p.tribes.map(name => {
+      const key = 'ptribe-' + name;
+      const on = !!state.subscriptions[key];
+      return `<div class="tribe-list-item">${avatarHtml(name,null,34).replace('avatar','avatar tav')}<span>${escapeHtml(name)}</span><button class="tribe-sub-btn ${on?'on':''}" data-tribesub="${escapeHtml(key)}">${on?'SUBSCRIBED':'SUBSCRIBE'}</button></div>`;
+    }).join('');
+  }
+  if (sec === 'EVENTS') {
+    return `<h2 style="color:${colorFor('events')}">Events</h2>` + p.events.map((ev,i) => {
+      const key = 'pev-' + i;
+      const on = !!state.goAttending[key];
+      return `<div class="calendar-row"><div class="cdate">${escapeHtml(ev.date)}</div><div class="ctitle">${escapeHtml(ev.title)}</div><button class="go-btn ${on?'on':''}" data-go="${key}">${on?'GOING':'GO'}</button></div>`;
+    }).join('');
+  }
+  if (sec === 'CONNECTIONS') {
+    return profileConnectionsHtml(p);
+  }
+  if (sec === 'LIBRARY') {
+    return `<h2 style="color:${colorFor('library')}">Library</h2>${tribeMiniMasonry(9, p.hue, '')}`;
+  }
+  return '';
+}
+
+function renderProfile() {
+  const p = SEED.profile;
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="view-pad">
+      <div class="profile-header">
+        ${avatarHtml(p.name, p.hue, 90).replace('class="avatar"','class="avatar profile-av"')}
+        <div>
+          <div class="profile-name">${escapeHtml(p.name)}</div>
+          <div class="profile-flair">${escapeHtml(p.flair)}</div>
+          <div class="stat-block">
+            <div><b>${escapeHtml(p.stats.kudos)}</b><span>Kudos</span></div>
+            <div><b>${p.stats.zums}</b><span>Zums</span></div>
+            <div><b>${p.stats.skills}</b><span>Skills</span></div>
+          </div>
+          <div class="profile-dots">
+            <span style="background:var(--az-blue)"></span><span style="background:var(--az-orange)"></span>
+            <span style="background:var(--az-yellow)"></span><span style="background:var(--az-green)"></span>
+          </div>
+        </div>
+      </div>
+      <div class="profile-subnav" id="profile-subnav">
+        ${p.sections.map(s => `<a data-psec="${s}" class="${state.profileActiveSection===s?'active':''}" style="color:${colorFor(s.toLowerCase())}">${s}</a>`).join('')}
+      </div>
+      <div id="profile-section-content">${profileSectionContent(p)}</div>
+    </div>
+  `;
+
+  document.querySelectorAll('#profile-subnav [data-psec]').forEach(el => {
+    el.addEventListener('click', () => { state.profileActiveSection = el.dataset.psec; renderProfile(); });
+  });
+  wireProfileInteractions(p);
+}
+
+function wireProfileInteractions(p) {
+  const addSkillBtn = document.getElementById('add-skill-btn');
+  if (addSkillBtn) addSkillBtn.addEventListener('click', () => {
+    const name = prompt('New skill name:');
+    if (name && name.trim()) {
+      state.profileSkillsExtra.push({ name: name.trim(), count: '1' });
+      renderProfile();
+    }
+  });
+  document.querySelectorAll('[data-tribesub]').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.tribesub;
+      state.subscriptions[key] = !state.subscriptions[key];
+      renderProfile();
+    });
+  });
+  document.querySelectorAll('[data-go]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.goAttending[el.dataset.go] = !state.goAttending[el.dataset.go];
+      renderProfile();
+    });
+  });
+  document.querySelectorAll('[data-cat]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.connActiveCat = el.dataset.cat;
+      renderProfile();
+    });
+  });
+  document.querySelectorAll('[data-subskill]').forEach(el => {
+    el.addEventListener('click', () => {
+      const val = el.dataset.subskill;
+      if (!state.connChips.includes(state.connActiveCat)) {
+        state.connChips.push(state.connActiveCat);
+      }
+      renderProfile();
+    });
+  });
+  document.querySelectorAll('[data-remove-chip]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const val = el.dataset.removeChip;
+      state.connChips = state.connChips.filter(c => c !== val);
+      renderProfile();
+    });
+  });
+}
+
+/* ============================================================
+   SECTION: HOME VIEW
+   ============================================================ */
+function renderHome() {
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="view-pad">
+      <h1 class="view-title">Home</h1>
+      ${SEED.homeFeed.map((f,i) => `
+        <div class="feed-card">
+          <div class="feed-card-head">
+            <h3>${escapeHtml(f.title)}</h3>
+            <span class="author">${escapeHtml(f.author)}</span>
+          </div>
+          <div class="feed-media">${gradientArt([200+i*40,240+i*40], false)}</div>
+          <div class="feed-desc">${escapeHtml(f.description)}</div>
+          ${(f.comments||[]).map(c => `<div class="dcard-comment">${avatarHtml(c.user,null,30)}<div><span class="cname">${escapeHtml(c.user)}</span>${escapeHtml(c.text)}</div></div>`).join('')}
+          <div class="dcard-comment-input">${avatarHtml(SEED.currentUser.name, SEED.currentUser.hue, 28)}<input type="text" placeholder="Write a comment..."></div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+/* ============================================================
+   SECTION: MASTER RENDER
+   ============================================================ */
+function render() {
+  renderSideNav();
+  renderRightRail();
+  const v = state.route.view;
+  if (v === 'explore') renderExplore();
+  else if (v === 'home') renderHome();
+  else if (v === 'tribe') renderTribe();
+  else if (v === 'profile') renderProfile();
+  else renderExplore();
+
+  document.querySelectorAll('.tb-nav-mini a').forEach(a => {
+    a.classList.toggle('active', a.dataset.route === v);
+  });
+}
+
+/* ============================================================
+   SECTION: INIT
+   ============================================================ */
+renderTopbarUser();
+renderPlayer();
+state.route = parseHash();
+render();
+</script>
+</body>
+</html>
