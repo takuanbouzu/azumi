@@ -313,7 +313,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    SECTION: TRIBE (immersive backdrop view)
    ============================================================ */
 .backdrop {
-  position: absolute; inset: 0; overflow: hidden;
+  position: fixed; top: var(--topbar-h); left: 0; right: 0; bottom: 0; overflow: hidden; z-index: 0;
 }
 .backdrop-art {
   position: absolute; inset: -10%;
@@ -454,6 +454,71 @@ ul { list-style: none; margin: 0; padding: 0; }
 .hidden { display: none !important; }
 .empty-note { color: var(--az-grey); font-size: 12px; padding: 20px 0; }
 @media (max-width: 1300px) { .masonry { columns: 3 190px; } }
+
+/* ============================================================
+   SECTION: MOBILE SHELL (hamburger + drawer nav)
+   ============================================================ */
+.hamburger-btn { display: none; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; color: var(--az-ink); }
+#mobile-scrim {
+  display: none; position: fixed; top: var(--topbar-h); left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.35); z-index: 110;
+}
+#mobile-scrim.show { display: block; }
+
+/* ============================================================
+   SECTION: RESPONSIVE — PHONE / NARROW TABLET
+   ============================================================ */
+@media (max-width: 900px) {
+  #app { min-width: 0; }
+  #shell-body { grid-template-columns: 1fr; }
+  #topbar { grid-template-columns: auto 1fr auto; padding: 0 10px; }
+
+  .hamburger-btn { display: flex; }
+  .tb-brand { padding-left: 0; gap: 8px; }
+  .tb-word, .tb-nav-mini { display: none; }
+  .tb-center { gap: 10px; }
+  .tb-user-info { display: none; }
+  .tb-player { gap: 8px; padding-right: 0; }
+  .tb-progress-wrap { display: none; }
+  .tb-nowplaying { display: none; }
+
+  #sidenav, #rightrail {
+    position: fixed; top: var(--topbar-h); bottom: 0; z-index: 120;
+    width: min(78vw, 300px); transition: transform 220ms ease;
+    box-shadow: 0 0 24px rgba(0,0,0,0.2); overflow-y: auto;
+  }
+  #sidenav { left: 0; transform: translateX(-100%); }
+  #sidenav.mobile-open { transform: translateX(0); }
+  #rightrail {
+    right: 0; transform: translateX(100%); border-left: 1px solid var(--az-line);
+    display: block !important; /* override desktop rail-collapsed display:none */
+  }
+  #rightrail.mobile-open { transform: translateX(0); }
+
+  .view-pad { padding: 16px; }
+  .view-title { font-size: 18px; }
+  .masonry { columns: 2 140px; column-gap: 10px; }
+
+  #overlay { padding: 0; align-items: stretch; }
+  .dcard { max-width: 100%; min-height: 100%; border-top: none; }
+  .dcard-nav { font-size: 22px; padding: 8px; background: rgba(255,255,255,0.85); border-radius: 50%; }
+  .dcard-nav.prev { left: 6px; }
+  .dcard-nav.next { right: 6px; }
+  .dcard-header { font-size: 18px; padding: 20px 20px 4px; }
+  .dcard-body, .dcard-comments, .dcard-event-top, .dcard-event-meta, .dcard-attendees, .dcard-actions { padding-left: 20px; padding-right: 20px; }
+  .dcard-fullwidth-btn { width: calc(100% - 40px); }
+
+  .tribe-wrap { padding-top: 30px; }
+  .tribe-emblem { width: 72px; height: 72px; font-size: 20px; }
+  .tribe-menu { width: min(84vw, 260px); }
+  .tribe-panel { width: 94%; padding: 18px 16px 24px; }
+
+  .profile-header { flex-wrap: wrap; gap: 14px; }
+  .profile-subnav { gap: 14px; }
+  .stat-block { gap: 16px; }
+  .skill-name { width: 110px; }
+  .conn-tabs button { padding: 8px 4px; font-size: 11px; }
+}
 </style>
 </head>
 <body>
@@ -464,6 +529,9 @@ ul { list-style: none; margin: 0; padding: 0; }
        ============================================================ -->
   <div id="topbar">
     <div class="tb-brand">
+      <button class="hamburger-btn" id="btn-hamburger" title="Menu" aria-label="Open menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
       <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="20" cy="20" r="18" stroke="#e74c3c" stroke-width="2"/>
         <path d="M6 22 Q13 12 20 22 T34 22" stroke="#e74c3c" stroke-width="2" fill="none" stroke-linecap="round"/>
@@ -513,6 +581,8 @@ ul { list-style: none; margin: 0; padding: 0; }
     <aside id="rightrail"></aside>
   </div>
 </div>
+
+<div id="mobile-scrim"></div>
 
 <!-- ============================================================
      OVERLAY DETAIL CARD
@@ -785,7 +855,9 @@ const state = {
   profileSkillsExtra: [],
   connActiveCat: 'ART',
   connChips: [],
-  railCollapsed: false
+  railCollapsed: false,
+  mobileNavOpen: false,
+  mobileRailOpen: false
 };
 
 // Cards eligible for overlay (exclude the 'velvet' tribe tile which routes directly)
@@ -803,7 +875,37 @@ function parseHash() {
   return { view: parts[0], param: parts[1] || null };
 }
 function navigate(hash) { location.hash = hash; }
-window.addEventListener('hashchange', () => { state.route = parseHash(); render(); });
+window.addEventListener('hashchange', () => { state.route = parseHash(); closeMobileDrawers(); render(); });
+
+/* ============================================================
+   SECTION: MOBILE DRAWERS (hamburger nav + rail, ≤900px)
+   ============================================================ */
+function updateMobileScrim() {
+  document.getElementById('mobile-scrim').classList.toggle('show', state.mobileNavOpen || state.mobileRailOpen);
+}
+function toggleMobileNav() {
+  state.mobileNavOpen = !state.mobileNavOpen;
+  if (state.mobileNavOpen) state.mobileRailOpen = false;
+  document.getElementById('sidenav').classList.toggle('mobile-open', state.mobileNavOpen);
+  document.getElementById('rightrail').classList.remove('mobile-open');
+  updateMobileScrim();
+}
+function toggleMobileRail() {
+  state.mobileRailOpen = !state.mobileRailOpen;
+  if (state.mobileRailOpen) state.mobileNavOpen = false;
+  document.getElementById('rightrail').classList.toggle('mobile-open', state.mobileRailOpen);
+  document.getElementById('sidenav').classList.remove('mobile-open');
+  updateMobileScrim();
+}
+function closeMobileDrawers() {
+  state.mobileNavOpen = false;
+  state.mobileRailOpen = false;
+  document.getElementById('sidenav').classList.remove('mobile-open');
+  document.getElementById('rightrail').classList.remove('mobile-open');
+  updateMobileScrim();
+}
+document.getElementById('btn-hamburger').addEventListener('click', toggleMobileNav);
+document.getElementById('mobile-scrim').addEventListener('click', closeMobileDrawers);
 
 /* ============================================================
    SECTION: TOPBAR RENDER + PLAYER
@@ -834,6 +936,7 @@ document.getElementById('btn-prev').addEventListener('click', () => {
 document.getElementById('btn-queue-toggle').addEventListener('click', () => {
   state.railCollapsed = !state.railCollapsed;
   document.getElementById('shell-body').classList.toggle('rail-collapsed', state.railCollapsed);
+  toggleMobileRail();
 });
 
 /* ============================================================
